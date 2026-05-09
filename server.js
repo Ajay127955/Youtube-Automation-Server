@@ -3,15 +3,21 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
-const OpenAI = require("openai");
+const {
+    GoogleGenerativeAI
+} = require("@google/generative-ai");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+const genAI = new GoogleGenerativeAI(
+    process.env.GEMINI_API_KEY
+);
+
+const model = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash"
 });
 
 app.post("/new-video", async (req, res) => {
@@ -24,27 +30,10 @@ app.post("/new-video", async (req, res) => {
 
         const fileName = req.body.fileName;
 
-        // Remove extension
-        const cleanName = fileName.replace(".mp4", "");
+        const cleanName =
+            fileName.replace(".mp4", "");
 
-        // AI Metadata Generation
-        const completion =
-            await openai.chat.completions.create({
-
-                model: "gpt-4o-mini",
-
-                messages: [
-
-                    {
-                        role: "system",
-                        content:
-                            "You are a viral YouTube Shorts SEO expert."
-                    },
-
-                    {
-                        role: "user",
-                        content:
-`
+        const prompt = `
 Generate:
 
 1. Viral YouTube Shorts title
@@ -55,24 +44,24 @@ Generate:
 Video topic:
 ${cleanName}
 
-Make it highly clickable and modern.
-`
-                    }
+Make it modern, clickable and viral.
+`;
 
-                ]
+        const result =
+            await model.generateContent(prompt);
 
-            });
+        const response =
+            result.response.text();
 
-        const aiResponse =
-            completion.choices[0].message.content;
+        console.log(
+            "\n===== AI GENERATED METADATA =====\n"
+        );
 
-        console.log("\n===== AI GENERATED METADATA =====\n");
-
-        console.log(aiResponse);
+        console.log(response);
 
         res.json({
             success: true,
-            metadata: aiResponse
+            metadata: response
         });
 
     } catch (error) {
@@ -85,13 +74,16 @@ Make it highly clickable and modern.
             success: false,
             error: error.message
         });
+
     }
 
 });
 
 app.get("/", (req, res) => {
 
-    res.send("YouTube Automation Server Running 🚀");
+    res.send(
+        "YouTube Automation Server Running 🚀"
+    );
 
 });
 
