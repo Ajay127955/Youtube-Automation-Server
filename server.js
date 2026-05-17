@@ -3,21 +3,15 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
-const {
-    GoogleGenerativeAI
-} = require("@google/generative-ai");
+const Groq = require("groq-sdk");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-const genAI = new GoogleGenerativeAI(
-    process.env.GEMINI_API_KEY
-);
-
-const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash"
+const groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY
 });
 
 app.post("/new-video", async (req, res) => {
@@ -33,7 +27,21 @@ app.post("/new-video", async (req, res) => {
         const cleanName =
             fileName.replace(".mp4", "");
 
-        const prompt = `
+        const completion =
+            await groq.chat.completions.create({
+
+                messages: [
+
+                    {
+                        role: "system",
+                        content:
+                            "You are a viral YouTube Shorts SEO expert."
+                    },
+
+                    {
+                        role: "user",
+                        content:
+`
 Generate:
 
 1. Viral YouTube Shorts title
@@ -41,27 +49,33 @@ Generate:
 3. Trending hashtags
 4. SEO tags
 
-Video topic:
+Video Topic:
 ${cleanName}
 
-Make it modern, clickable and viral.
-`;
+Make it modern, emotional, clickable and viral.
+`
+                    }
 
-        const result =
-            await model.generateContent(prompt);
+                ],
 
-        const response =
-            result.response.text();
+                model: "llama-3.3-70b-versatile",
+
+                temperature: 0.9
+
+            });
+
+        const aiResponse =
+            completion.choices[0].message.content;
 
         console.log(
             "\n===== AI GENERATED METADATA =====\n"
         );
 
-        console.log(response);
+        console.log(aiResponse);
 
         res.json({
             success: true,
-            metadata: response
+            metadata: aiResponse
         });
 
     } catch (error) {
